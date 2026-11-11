@@ -1,6 +1,17 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -37,3 +37,8 @@
+ serde-wasm-bindgen = { version = "=0.6.5", optional = true }
+ unsafe-libyaml = { version = "=0.2.11", optional = true }
+ moxml = { git = "https://github.com/lutaml/moxml-rs", rev = "c55a7ecf60764d75a7a0ef54f0e483ec40df4b73", optional = true }
++
++[[bin]]
++name = "mml-xml-codegen"
++path = "src/bin/mml-xml-codegen.rs"
++required-features = ["generator", "xml"]
 --- a/src/generator/mod.rs
 +++ b/src/generator/mod.rs
-@@ -392,9 +392,41 @@
+@@ -392,9 +392,83 @@
          bindings: &TypeBindings,
      ) -> ContractResult<SourceMap> {
          let plan = plan_models(bundle, bindings)?;
@@ -17,6 +28,48 @@
 +    /// XML consumers can opt in to the same serde model implementations via
 +    /// the "model-serde" feature. The native field and validation plan stays
 +    /// identical, so XML-only builds avoid expanding irrelevant derive macros.
++    /// Generate presence-aware attribute snapshots without whole-model Serde derives.
++    pub fn generate_model_snapshots(
++        &self,
++        bundle: &Bundle,
++        bindings: &TypeBindings,
++    ) -> ContractResult<SourceMap> {
++        let plan = plan_models(bundle, bindings)?;
++        let mut output = String::from(
++            "// Generated from the validated model plan.\n\
++             #![allow(non_snake_case)]\n\
++             use super::models::*;\n\
++             use serde_json::{Map, Value};\n\
++             pub trait Snapshot { fn snapshot(&self) -> Result<Value, serde_json::Error>; }\n\
++             impl<T: Snapshot> Snapshot for Box<T> { fn snapshot(&self) -> Result<Value, serde_json::Error> { (**self).snapshot() } }\n\
++             impl<T: Snapshot> Snapshot for Vec<T> { fn snapshot(&self) -> Result<Value, serde_json::Error> { self.iter().map(Snapshot::snapshot).collect::<Result<Vec<_>,_>>().map(Value::Array) } }\n",
++        );
++        for model in &plan.models {
++            if model.attrs.iter().any(|attr| attr.union.is_some()) {
++                return Err(error(ErrorReason::UnsupportedType, &model.id, "",
++                    "snapshot generation does not support model unions"));
++            }
++            let name = &model.name;
++            let mut helpers = String::new();
++            let mut entries = Vec::new();
++            for (index, attr) in model.attrs.iter().enumerate() {
++                let value = if attr.nested_validate { "Snapshot::snapshot(value)?" }
++                    else { "serde_json::to_value(value)?" };
++                let helper = format!("__lml_snapshot_{name}_{index}");
++                entries.push(helper.clone());
++                writeln!(helpers, "#[inline(never)]\nfn {helper}(model: &{name}, data: &mut Map<String, Value>) -> Result<(), serde_json::Error> {{\n match &model.{} {{ Presence::Absent => {{}}, Presence::Null => {{ data.insert({}.into(), Value::Null); }}, Presence::Value(value) => {{ data.insert({}.into(), {value}); }} }}\n Ok(())\n}}", attr.field, quote(&attr.name), quote(&attr.name)).unwrap();
++            }
++            let entries = entries.join(", ");
++            writeln!(output, "impl Snapshot for {name} {{ fn snapshot(&self) -> Result<Value, serde_json::Error> {{ let mut data = Map::new();\n const FIELDS: &[fn(&{name}, &mut Map<String, Value>) -> Result<(), serde_json::Error>] = &[{entries}];\n for field in FIELDS {{ field(self, &mut data)?; }}").unwrap();
++            if model.ordered_content {
++                output.push_str("match &self.__lml_content { Presence::Absent => {}, Presence::Null => { data.insert(\"__lml_content\".into(), Value::Null); }, Presence::Value(value) => { data.insert(\"__lml_content\".into(), serde_json::to_value(value)?); } }\n");
++            }
++            output.push_str("Ok(Value::Object(data)) } }\n");
++            output.push_str(&helpers);
++        }
++        Ok(BTreeMap::from([("snapshots.rs".into(), output)]))
++    }
++
 +    pub fn generate_xml_models(
 +        &self,
 +        bundle: &Bundle,
@@ -45,7 +98,7 @@
  /// Make every decision and validation for the bundle; emission is then pure.
  fn plan_models(bundle: &Bundle, bindings: &TypeBindings) -> ContractResult<Plan> {
      let mut hoisted = effective_discriminators(bundle)?;
-@@ -624,13 +656,13 @@
+@@ -624,13 +698,13 @@
      Ok(())
  }
  /// Pure emission: a function of the plan only, with no decisions or errors.
@@ -61,7 +114,7 @@
      }
      output
  }
-@@ -657,7 +689,7 @@
+@@ -657,7 +731,7 @@
      }
      output.push_str("Err(serde::de::Error::custom(\"invalid enum value\")) } }\n");
  }
@@ -70,7 +123,7 @@
      let (id, name) = (&model.id, &model.name);
      for a in &model.attrs {
          if let Some(union) = &a.union {
-@@ -667,12 +699,41 @@
+@@ -667,12 +741,41 @@
              emit_enum(output, en);
          }
      }
@@ -115,18 +168,80 @@
      }
      output.push_str("}\n");
      writeln!(
+@@ -705,7 +808,10 @@
+         }
+     }
+     output.push_str("Ok(()) }\npub fn validate(&self)->Result<(),ValidationError>{self.validate_phase(true)}\npub fn validate_shape(&self)->Result<(),ValidationError>{self.validate_phase(false)}\nfn validate_phase(&self, choices:bool)->Result<(),ValidationError>{\n");
+-    for a in &model.attrs {
++    let mut validation_helpers = String::new();
++    let mut validation_entries = Vec::new();
++    for (index, a) in model.attrs.iter().enumerate() {
++        let field_start = output.len();
+         let field = &a.field;
+         let err = format!(
+             "invalid({}, {}, \"invalid_document\")",
+@@ -743,6 +849,18 @@
+                 .unwrap();
+             }
+         }
++        if optional_serde {
++            let body = output.split_off(field_start);
++            if !body.is_empty() {
++                let helper = format!("__lml_validate_field_{index}");
++                validation_entries.push(format!("{name}::{helper}"));
++                writeln!(validation_helpers, "#[inline(never)]\nfn {helper}(&self, choices: bool) -> Result<(), ValidationError> {{\n{body}Ok(())\n}}").unwrap();
++            }
++        }
++    }
++    if optional_serde && !validation_entries.is_empty() {
++        let entries = validation_entries.join(", ");
++        writeln!(output, "const FIELDS: &[fn(&{name}, bool) -> Result<(), ValidationError>] = &[{entries}];\nfor field in FIELDS {{ field(self, choices)?; }}").unwrap();
+     }
+     if model.ordered_content {
+         let err = format!(
+@@ -774,7 +892,9 @@
+     if !model.choice_checks.is_empty() {
+         writeln!(output, "if choices {{ {} }}", model.choice_checks).unwrap();
+     }
+-    output.push_str("Ok(()) }\n}\n");
++    output.push_str("Ok(()) }\n");
++    output.push_str(&validation_helpers);
++    output.push_str("}\n");
+ }
+ /// Validate one polymorphic attribute's cases and capture what emission needs.
+ fn plan_union(
 --- a/src/xml/reader_emitter.rs
 +++ b/src/xml/reader_emitter.rs
-@@ -628,7 +628,7 @@
+@@ -586,6 +586,7 @@
+ 
+ /// The reader for one model: a `const` rule table and a typed element reader.
+ pub(super) fn emit_reader(out: &mut String, p: &Plan) {
++    let mut field_helpers = String::new();
+     let (id, name) = (q(&p.id), &p.name);
+     let attrs: String = p
+         .attrs
+@@ -628,7 +629,7 @@
      .unwrap();
      writeln!(
          out,
 -        "fn read_{name}_el(doc: &rt::Doc, ord: usize, loc: &str) -> ContractResult<{name}> {{\n let s = rt::scan(doc, ord, &RS_{name}, loc)?;\n let mut m = {name}::default();"
-+        "fn read_{name}_el(doc: &rt::Doc, ord: usize, loc: &str) -> ContractResult<Box<{name}>> {{\n let s = rt::scan(doc, ord, &RS_{name}, loc)?;\n let mut m = Box::new({name}::default());"
++        "fn read_{name}_el(doc: &rt::Doc, ord: usize, loc: &str) -> ContractResult<Box<{name}>> {{\n let s = rt::scan(doc, ord, &RS_{name}, loc)?;\n let mut m = boxed_default::<{name}>();"
      )
      .unwrap();
      for (i, a) in p.attrs.iter().enumerate() {
-@@ -654,7 +654,7 @@
+@@ -639,7 +640,10 @@
+             q(&a.member), a.ident).unwrap();
+     }
+     if !p.elems.is_empty() {
+-        out.push_str(" for hit in &s.elems {\n  match hit.rule {\n");
++        let entries = (0..p.elems.len())
++            .map(|index| format!("__lml_xml_read_{name}_{index}"))
++            .collect::<Vec<_>>().join(", ");
++        writeln!(out, " const READ_FIELDS: &[fn(&mut {name}, &rt::Doc, &rt::ElemHit) -> ContractResult<()>] = &[{entries}];\n for hit in &s.elems {{ if let Some(read) = READ_FIELDS.get(hit.rule) {{ read(m.as_mut(), doc, hit)?; }} }}").unwrap();
+         for (i, e) in p.elems.iter().enumerate() {
+             let first = q(&e.names[0]);
+             let at = format!(
+@@ -654,7 +658,7 @@
                  ),
                  Child::Model(n) => (
                      String::new(),
@@ -135,7 +250,7 @@
                      false,
                  ),
                  Child::Poly {
-@@ -668,7 +668,7 @@
+@@ -668,7 +672,7 @@
                      let mut arms = String::new();
                      for (index, (tag, case)) in cases.iter().enumerate() {
                          arms += &format!(
@@ -144,7 +259,7 @@
                              q(tag)
                          );
                      }
-@@ -676,7 +676,7 @@
+@@ -676,7 +680,7 @@
                      // hold through the case that maps to it.
                      if let Some(index) = cases.iter().position(|(_, case)| case == base) {
                          arms += &format!(
@@ -153,7 +268,20 @@
                          );
                      }
                      let dloc = format!(
-@@ -728,7 +728,7 @@
+@@ -702,9 +706,9 @@
+                 (true, true) => format!("if let Some(v) = {value} {{ {} }}", push(&e.ident, "v")),
+                 (true, false) => format!("let v = {value}; {}", push(&e.ident, "v")),
+             };
+-            writeln!(out, "   {i} => {{ {prelude} {body} }}").unwrap();
+-        }
+-        out.push_str("   _ => {}\n  }\n }\n");
++            writeln!(field_helpers, "#[inline(never)]\nfn __lml_xml_read_{name}_{i}(m: &mut {name}, doc: &rt::Doc, hit: &rt::ElemHit) -> ContractResult<()> {{\n {prelude} {body}\n Ok(())\n}}").unwrap();
++        }
++
+     }
+     for e in p.elems.iter().filter(|e| e.absent_list) {
+         let field = &e.ident;
+@@ -728,14 +732,15 @@
          writeln!(out, " if !s.any.is_empty() {{ m.{ident} = Presence::Value(NeutralHash::from_string_pairs(s.any)); }}").unwrap();
      }
      if p.tokens {
@@ -161,8 +289,10 @@
 +        writeln!(out, " m.__lml_content = Presence::Value(model_tokens(&s.tokens));").unwrap();
      }
      out.push_str(" Ok(m)\n}\n");
++    out.push_str(&field_helpers);
      let root = p
-@@ -737,5 +737,5 @@
+         .root
+         .as_ref()
          .map_or("None".to_string(), |r| format!("Some({})", q(r)));
      let accept = str_list(&accept_list(&[p.own.as_ref().map(|n| n.0.as_str())]));
      writeln!(out,
@@ -172,7 +302,35 @@
 +}
 --- a/src/xml/writer_emitter.rs
 +++ b/src/xml/writer_emitter.rs
-@@ -136,7 +136,7 @@
+@@ -7,6 +7,7 @@
+ const EL: &str = "rt::moxml::document::ElementSpec";
+ 
+ pub(super) fn emit_writer(out: &mut String, p: &Plan) {
++    let mut field_helpers = String::new();
+     let (id, name) = (q(&p.id), &p.name);
+     let refusal = if p.writer_refusals.is_empty() {
+         "None".to_string()
+@@ -107,12 +108,13 @@
+         } else {
+             format!("Presence::Value(x) => Some(vec![{one}])")
+         };
+-        writeln!(
+-            out,
+-            " values.elems.push(match &v.{} {{ {arm}, _ => None }});",
+-            e.ident
+-        )
+-        .unwrap();
++        writeln!(field_helpers, "#[inline(never)]\nfn __lml_xml_write_{name}_{i}(v: &{name}, values: &mut rt::Values) -> ContractResult<()> {{\n values.elems.push(match &v.{} {{ {arm}, _ => None }});\n Ok(())\n}}", e.ident).unwrap();
++    }
++    if !p.elems.is_empty() {
++        let entries = (0..p.elems.len())
++            .map(|index| format!("__lml_xml_write_{name}_{index}"))
++            .collect::<Vec<_>>().join(", ");
++        writeln!(out, " const WRITE_FIELDS: &[fn(&{name}, &mut rt::Values) -> ContractResult<()>] = &[{entries}];\n for write in WRITE_FIELDS {{ write(v, &mut values)?; }}").unwrap();
+     }
+     if let Some(c) = &p.content {
+         let enc = c.kind.encode(&id, &q(&c.member));
+@@ -136,11 +138,12 @@
          .unwrap();
      }
      if p.tokens {
@@ -181,19 +339,25 @@
      } else {
          writeln!(out, " if order.is_some() {{ return Err(rt::fail(ErrorReason::InvalidOrderedContent, {id}, None, None, \"/order\", \"the model carries no ordered content\")); }}").unwrap();
      }
+     writeln!(out, " rt::assemble(&WS_{name}, name, ns, values)\n}}").unwrap();
++    out.push_str(&field_helpers);
+ 
+     let root = match &p.root {
+         Some(r) => format!(
 --- a/src/xml/emitter.rs
 +++ b/src/xml/emitter.rs
-@@ -40,6 +40,7 @@
+@@ -40,6 +40,8 @@
          }
          let names = model_names(bundle)?;
          let mut out = String::from(HEADER);
 +        out.push_str(include_str!("token_bridge.rs.txt"));
++        out.push_str("#[inline(never)]\nfn boxed_default<T: Default>() -> Box<T> { Box::new(T::default()) }\n");
          for (id, model) in &bundle.models {
              if model.mappings.xml.is_none() {
                  continue;
 --- /dev/null
 +++ b/src/bin/mml-xml-codegen.rs
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,27 @@
 +use lutaml_rs::{
 +    contracts::{InputFormat, TypeBindings, XmlCodecEmitter},
 +    generator::RustEmitter,
@@ -212,9 +376,10 @@
 +    let bindings = TypeBindings::new();
 +    let files = RustEmitter.generate_xml_models(&bundle, &bindings)?;
 +    let codecs = RustXmlEmitter.generate_xml_codecs(&bundle, &bindings)?;
++    let snapshots = RustEmitter.generate_model_snapshots(&bundle, &bindings)?;
 +    let output = PathBuf::from(output);
 +    std::fs::create_dir_all(&output)?;
-+    for (name, source) in files.into_iter().chain(codecs) {
++    for (name, source) in files.into_iter().chain(codecs).chain(snapshots) {
 +        std::fs::write(output.join(name), source)?;
 +    }
 +    println!("{}", snapshot.checksum());

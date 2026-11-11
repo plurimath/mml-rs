@@ -24,3 +24,9 @@ To regenerate the native sources, apply the patch in
 feature. Pass each `model/mathml-vN.bundle.json` and the corresponding
 `src/generated_xml/vN` directory to that binary. The provenance file
 records the generated hashes for both versions.
+
+The native subcrate provides opaque owned-model handles for Python. Its snapshot
+profile is mml-typed-model-snapshot-v1, with absent fields omitted and present
+empty values retained. Native parser and writer field helpers use bounded
+recursive frames. Default Rust-thread depth16/64 acceptance and parser-limit
+refusals at128/256 are recorded with the native source provenance.

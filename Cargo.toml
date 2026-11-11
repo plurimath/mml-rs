@@ -5,7 +5,7 @@ edition = "2021"
 description = "Generated MathML v3 and v4 models and native XML codecs"
 license = "BSD-2-Clause"
 readme = "README.md"
-include = ["src/lib.rs", "src/v3.rs", "src/v4.rs", "src/generated_xml/*/models.rs", "src/generated_xml/*/xml_codecs.rs", "model/**", "tests/**", "README.md", "Cargo.toml"]
+include = ["src/lib.rs", "src/v3.rs", "src/v4.rs", "src/generated_xml/*/models.rs", "src/generated_xml/*/xml_codecs.rs", "model/**", "tests/**", "native/**", "README.md", "Cargo.toml"]
 
 [features]
 default = ["v3"]

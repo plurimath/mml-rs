@@ -1,0 +1,76 @@
+{
+  "format": "mml-native-source/1",
+  "profile": "mml-typed-model-snapshot-v1",
+  "framework_base": "4863160dff8a7099f2481e11ab7357d5b626dc25",
+  "generator_patch_sha256": "40126984bc1b6087fbf27cf42d773e4299ffae1a7687e07671c145c010346bb5",
+  "generator_binary_sha256": "cd453bece9a87c97ac3d35571c2c83b0ada390ee132c8cf1a71da3937d15c74c",
+  "ordinary_json_compiler_sha256": "cfd305a2fe07b4a8c454188b49b06b1c214b7f246a7ef74fd0197672b1233c33",
+  "runtime_sdk_sha256": "6ff7eb42135b225b6c4f5fe0a58402bbc2fbc711b33ca5a1e3def334f607e7f6",
+  "rustc": [
+    "rustc 1.95.0 (59807616e 2026-04-14)",
+    "binary: rustc",
+    "commit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860",
+    "commit-date: 2026-04-14",
+    "host: x86_64-unknown-linux-gnu",
+    "release: 1.95.0",
+    "LLVM version: 22.1.2"
+  ],
+  "dependency_family_manifest_sha256": "5184d8bcd857c851039f873ed53500d29820bbecf5c33fc0e5ddb6f567324a48",
+  "native_abi_source_sha256": "751983d783f3a8ccb1b4c460753e2d7299b635dc0ee4468daf4ae959e8ca9455",
+  "generated_snapshots": {
+    "3": "c8292869401e2ee7068d98e60f63990cd17bfb8e7a1056fd726275f96389eb29",
+    "4": "e3757a0c6081a7eb4d893064c553b51c591a4fea07400655b3df98117b167a6b"
+  },
+  "source_declaration_manifest": {
+    "format": "mml-portable-models/1",
+    "source_repository": "https://github.com/plurimath/mml",
+    "source_revision": "a88197810737e7eb809bbb5f887703a25beac3db",
+    "source_version": "2.4.7",
+    "framework_repository": "https://github.com/lutaml/lutaml-model",
+    "framework_revision": "fd2989fd8478b1ecb2508d98fa2d66792c09c72b",
+    "framework_status": "open candidate; not a released dependency",
+    "versions": {
+      "3": {
+        "path": "mathml-v3.bundle.json",
+        "sha256": "ee79ea4bcc910f91f1b118ae0accc5baeb058501c76f4d233e5c4724ef74aab4",
+        "bundle_checksum": "sha256:23bc156260b4dab3933351dadbae27a8f146c239875c630b2d76adcb27b778a4",
+        "models": 194,
+        "root": "Mml::V3::Math@mml_v3",
+        "capabilities": [
+          "xml"
+        ]
+      },
+      "4": {
+        "path": "mathml-v4.bundle.json",
+        "sha256": "7b1041645156d9df7b94a8c9c3acce6256b12d1df5f6cc611d39465e0556e26a",
+        "bundle_checksum": "sha256:5b823b450161072ff2adbdf4cf5b765909f4c85a7ea4e53dd17706a86165404c",
+        "models": 195,
+        "root": "Mml::V4::Math@mml_v4",
+        "capabilities": [
+          "xml"
+        ]
+      }
+    }
+  },
+  "verification": {
+    "xml_source_cases": 6,
+    "default_rust_thread_depth_success": [
+      16,
+      64
+    ],
+    "physical_xml_depth_success": [
+      34,
+      130
+    ],
+    "typed_parser_limit_refusal": [
+      128,
+      256
+    ],
+    "physical_xml_depth_refusal": [
+      258,
+      514
+    ],
+    "reuse_all": true,
+    "thread_stack_override": false
+  }
+}
