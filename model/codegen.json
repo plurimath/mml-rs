@@ -1,0 +1,56 @@
+{
+  "runtime_revision": "4863160dff8a7099f2481e11ab7357d5b626dc25",
+  "codegen_binary_sha256": "b80ed8041bce6e0fe61dca01b9750d24554186d229d51afbd49828277ff5d868",
+  "versions": {
+    "3": {
+      "input_sha256": "ee79ea4bcc910f91f1b118ae0accc5baeb058501c76f4d233e5c4724ef74aab4",
+      "generated": {
+        "models.rs": "a8cb3b3a4c12baca849fc1c252b45620e79359de8e0743d48b9331f968f4eaa1",
+        "xml_codecs.rs": "65315091cb51f3b32d83e0314c254fa7b2e21038e3d03cec5861f9eaed3dad53"
+      },
+      "baseline_generated": {
+        "models.rs": "4593a6c26344eee3b5d852f84687b363ed6dee9e946e8d26e247ba29b80e67f0",
+        "xml_codecs.rs": "12a59f323624e6348bc9af6921d35a811c3aae9d7a339b2cdd7c8aaf48c938d5"
+      }
+    },
+    "4": {
+      "input_sha256": "7b1041645156d9df7b94a8c9c3acce6256b12d1df5f6cc611d39465e0556e26a",
+      "generated": {
+        "models.rs": "2910cb2aac23438b612b37b3b08f7eb76e99675f46f8ee03d6d3c9af350bfc10",
+        "xml_codecs.rs": "284e84bd6a07c3e6538bc6d882bc9aab3a85547bf3a3c9064d3ba97cf96b690d"
+      },
+      "baseline_generated": {
+        "models.rs": "d1e70a5bc117ffc5e9282ddb268f804b6a2085565a722daab22002f93d831410",
+        "xml_codecs.rs": "d3865e68d8ec0f10e1d09b8024bfb51d3e446a015edc110ca0b4d8ac1f6380ee"
+      }
+    }
+  },
+  "xml_model_mode": {
+    "framework_base": "4863160dff8a7099f2481e11ab7357d5b626dc25",
+    "generator_patch_sha256": "22ecd172b8aa2f69bcd81db8085ef93ba9877e102f19eeab787c5bacd428df15",
+    "model_serde_feature": "model-serde",
+    "generated": [
+      {
+        "version": 3,
+        "model_attributes_changed_only_to_optional_serde": true,
+        "xml_codec_changes": "nested readers return boxes; public readers move the root value out; ordered tokens structurally converted",
+        "boxed_readers": 194,
+        "files": {
+          "models.rs": "a8cb3b3a4c12baca849fc1c252b45620e79359de8e0743d48b9331f968f4eaa1",
+          "xml_codecs.rs": "65315091cb51f3b32d83e0314c254fa7b2e21038e3d03cec5861f9eaed3dad53"
+        }
+      },
+      {
+        "version": 4,
+        "model_attributes_changed_only_to_optional_serde": true,
+        "xml_codec_changes": "nested readers return boxes; public readers move the root value out; ordered tokens structurally converted",
+        "boxed_readers": 195,
+        "files": {
+          "models.rs": "2910cb2aac23438b612b37b3b08f7eb76e99675f46f8ee03d6d3c9af350bfc10",
+          "xml_codecs.rs": "284e84bd6a07c3e6538bc6d882bc9aab3a85547bf3a3c9064d3ba97cf96b690d"
+        }
+      }
+    ]
+  },
+  "baseline_codegen_binary_sha256": "4813a91e10f04423fb6906bba61ea75d739a2fa90798b18a0a5b889ad9cd7d3d"
+}

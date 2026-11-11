@@ -1,0 +1,253 @@
+--- a/src/generator/mod.rs
++++ b/src/generator/mod.rs
+@@ -392,9 +392,41 @@
+         bindings: &TypeBindings,
+     ) -> ContractResult<SourceMap> {
+         let plan = plan_models(bundle, bindings)?;
+-        Ok(BTreeMap::from([("models.rs".into(), emit_models(&plan))]))
+-    }
+-}
++        Ok(BTreeMap::from([(
++            "models.rs".into(),
++            emit_models(&plan, false),
++        )]))
++    }
++}
++impl RustEmitter {
++    /// XML consumers can opt in to the same serde model implementations via
++    /// the "model-serde" feature. The native field and validation plan stays
++    /// identical, so XML-only builds avoid expanding irrelevant derive macros.
++    pub fn generate_xml_models(
++        &self,
++        bundle: &Bundle,
++        bindings: &TypeBindings,
++    ) -> ContractResult<SourceMap> {
++        let plan = plan_models(bundle, bindings)?;
++        for model in &plan.models {
++            for attr in &model.attrs {
++                if attr.union.is_some() || (attr.nested_validate && attr.default_wire.is_some()) {
++                    return Err(error(
++                        ErrorReason::UnsupportedType,
++                        &model.id,
++                        &attr.name,
++                        "XML-only model generation requires no serde-dependent model defaults or unions",
++                    ));
++                }
++            }
++        }
++        Ok(BTreeMap::from([(
++            "models.rs".into(),
++            emit_models(&plan, true),
++        )]))
++    }
++}
++
+ /// Make every decision and validation for the bundle; emission is then pure.
+ fn plan_models(bundle: &Bundle, bindings: &TypeBindings) -> ContractResult<Plan> {
+     let mut hoisted = effective_discriminators(bundle)?;
+@@ -624,13 +656,13 @@
+     Ok(())
+ }
+ /// Pure emission: a function of the plan only, with no decisions or errors.
+-fn emit_models(plan: &Plan) -> String {
++fn emit_models(plan: &Plan, optional_serde: bool) -> String {
+     let mut output = include_str!("runtime.rs.txt").to_owned();
+     if plan.needs_same_integer {
+         output.push_str("fn same_integer(a:&ExactInteger,b:&ExactInteger)->bool { fn parts(s:&str)->(bool,&str) { let negative=s.starts_with('-'); let digits=s.trim_start_matches(['-','+']).trim_start_matches('0'); (negative&&!digits.is_empty(),digits) } parts(a.as_str())==parts(b.as_str()) }\n");
+     }
+     for model in &plan.models {
+-        emit_model(&mut output, model);
++        emit_model(&mut output, model, optional_serde);
+     }
+     output
+ }
+@@ -657,7 +689,7 @@
+     }
+     output.push_str("Err(serde::de::Error::custom(\"invalid enum value\")) } }\n");
+ }
+-fn emit_model(output: &mut String, model: &ModelPlan) {
++fn emit_model(output: &mut String, model: &ModelPlan, optional_serde: bool) {
+     let (id, name) = (&model.id, &model.name);
+     for a in &model.attrs {
+         if let Some(union) = &a.union {
+@@ -667,12 +699,41 @@
+             emit_enum(output, en);
+         }
+     }
+-    writeln!(output,"#[allow(non_camel_case_types, non_snake_case)]\n#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]\n#[serde(deny_unknown_fields)]\npub struct {name} {{").unwrap();
++    output.push_str("#[allow(non_camel_case_types, non_snake_case)]\n");
++    if optional_serde {
++        output.push_str("#[derive(Clone, Debug, PartialEq, Eq)]\n#[cfg_attr(feature = \"model-serde\", derive(Serialize, Deserialize))]\n");
++    } else {
++        output.push_str("#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]\n");
++    }
++    let serde_attribute = |attribute: &str, output: &mut String| {
++        if optional_serde {
++            writeln!(
++                output,
++                "#[cfg_attr(feature = \"model-serde\", serde({attribute}))]"
++            )
++            .unwrap();
++        } else {
++            writeln!(output, "#[serde({attribute})]").unwrap();
++        }
++    };
++    serde_attribute("deny_unknown_fields", output);
++    writeln!(output, "pub struct {name} {{").unwrap();
+     for a in &model.attrs {
+-        writeln!(output,"#[serde(rename = {}, default, skip_serializing_if = \"Presence::is_absent\")]\npub {}: Presence<{}>,",quote(&a.name),a.field,a.shaped_ty).unwrap();
++        serde_attribute(
++            &format!(
++                "rename = {}, default, skip_serializing_if = \"Presence::is_absent\"",
++                quote(&a.name)
++            ),
++            output,
++        );
++        writeln!(output, "pub {}: Presence<{}>,", a.field, a.shaped_ty).unwrap();
+     }
+     if model.ordered_content {
+-        output.push_str("#[serde(default, skip_serializing_if = \"Presence::is_absent\")]\npub __lml_content: Presence<Vec<ContentToken>>,\n");
++        serde_attribute(
++            "default, skip_serializing_if = \"Presence::is_absent\"",
++            output,
++        );
++        output.push_str("pub __lml_content: Presence<Vec<ContentToken>>,\n");
+     }
+     output.push_str("}\n");
+     writeln!(
+--- a/src/xml/reader_emitter.rs
++++ b/src/xml/reader_emitter.rs
+@@ -628,7 +628,7 @@
+     .unwrap();
+     writeln!(
+         out,
+-        "fn read_{name}_el(doc: &rt::Doc, ord: usize, loc: &str) -> ContractResult<{name}> {{\n let s = rt::scan(doc, ord, &RS_{name}, loc)?;\n let mut m = {name}::default();"
++        "fn read_{name}_el(doc: &rt::Doc, ord: usize, loc: &str) -> ContractResult<Box<{name}>> {{\n let s = rt::scan(doc, ord, &RS_{name}, loc)?;\n let mut m = Box::new({name}::default());"
+     )
+     .unwrap();
+     for (i, a) in p.attrs.iter().enumerate() {
+@@ -654,7 +654,7 @@
+                 ),
+                 Child::Model(n) => (
+                     String::new(),
+-                    format!("Box::new(read_{n}_el(doc, hit.ord, &hit.loc)?)"),
++                    format!("read_{n}_el(doc, hit.ord, &hit.loc)?"),
+                     false,
+                 ),
+                 Child::Poly {
+@@ -668,7 +668,7 @@
+                     let mut arms = String::new();
+                     for (index, (tag, case)) in cases.iter().enumerate() {
+                         arms += &format!(
+-                            "Some({}) => {union}::Case{index}(Box::new(read_{case}_el(doc, hit.ord, &hit.loc)?)), ",
++                            "Some({}) => {union}::Case{index}(read_{case}_el(doc, hit.ord, &hit.loc)?), ",
+                             q(tag)
+                         );
+                     }
+@@ -676,7 +676,7 @@
+                     // hold through the case that maps to it.
+                     if let Some(index) = cases.iter().position(|(_, case)| case == base) {
+                         arms += &format!(
+-                            "None => {union}::Case{index}(Box::new(read_{base}_el(doc, hit.ord, &hit.loc)?)), "
++                            "None => {union}::Case{index}(read_{base}_el(doc, hit.ord, &hit.loc)?), "
+                         );
+                     }
+                     let dloc = format!(
+@@ -728,7 +728,7 @@
+         writeln!(out, " if !s.any.is_empty() {{ m.{ident} = Presence::Value(NeutralHash::from_string_pairs(s.any)); }}").unwrap();
+     }
+     if p.tokens {
+-        writeln!(out, " m.__lml_content = Presence::Value(rt::retype(&s.tokens, &rt::Where {{ id: {id}, attribute: \"__lml_content\", rule: \"\", loc }})?);").unwrap();
++        writeln!(out, " m.__lml_content = Presence::Value(model_tokens(&s.tokens));").unwrap();
+     }
+     out.push_str(" Ok(m)\n}\n");
+     let root = p
+@@ -737,5 +737,5 @@
+         .map_or("None".to_string(), |r| format!("Some({})", q(r)));
+     let accept = str_list(&accept_list(&[p.own.as_ref().map(|n| n.0.as_str())]));
+     writeln!(out,
+-        "pub fn read_{name}_xml(input: &[u8]) -> ContractResult<{name}> {{\n let doc = rt::parse({id}, input)?;\n doc.check_root({id}, {root}, {accept})?;\n let loc = format!(\"/{{}}\", doc.root_local());\n let m = read_{name}_el(&doc, 0, &loc)?;\n m.validate_shape().map_err(|e| rt::fail(ErrorReason::InvalidDocument, e.model_id, (!e.attribute.is_empty()).then_some(e.attribute), None, \"/input\", e.reason))?;\n Ok(m)\n}}").unwrap();
+-}
++        "pub fn read_{name}_xml(input: &[u8]) -> ContractResult<{name}> {{\n let doc = rt::parse({id}, input)?;\n doc.check_root({id}, {root}, {accept})?;\n let loc = format!(\"/{{}}\", doc.root_local());\n let m = read_{name}_el(&doc, 0, &loc)?;\n m.validate_shape().map_err(|e| rt::fail(ErrorReason::InvalidDocument, e.model_id, (!e.attribute.is_empty()).then_some(e.attribute), None, \"/input\", e.reason))?;\n Ok(*m)\n}}").unwrap();
++}
+--- a/src/xml/writer_emitter.rs
++++ b/src/xml/writer_emitter.rs
+@@ -136,7 +136,7 @@
+         .unwrap();
+     }
+     if p.tokens {
+-        writeln!(out, " let at = rt::Where {{ id: {id}, attribute: \"__lml_content\", rule: \"\", loc: \"/__lml_content\" }};\n values.tokens = match order {{ Some(t) => Some(t.to_vec()), None => match &v.__lml_content {{ Presence::Value(t) => Some(rt::retype(t, &at)?), _ => None }} }};").unwrap();
++        writeln!(out, " values.tokens = match order {{ Some(t) => Some(t.to_vec()), None => match &v.__lml_content {{ Presence::Value(t) => Some(contract_tokens(t)), _ => None }} }};").unwrap();
+     } else {
+         writeln!(out, " if order.is_some() {{ return Err(rt::fail(ErrorReason::InvalidOrderedContent, {id}, None, None, \"/order\", \"the model carries no ordered content\")); }}").unwrap();
+     }
+--- a/src/xml/emitter.rs
++++ b/src/xml/emitter.rs
+@@ -40,6 +40,7 @@
+         }
+         let names = model_names(bundle)?;
+         let mut out = String::from(HEADER);
++        out.push_str(include_str!("token_bridge.rs.txt"));
+         for (id, model) in &bundle.models {
+             if model.mappings.xml.is_none() {
+                 continue;
+--- /dev/null
++++ b/src/bin/mml-xml-codegen.rs
+@@ -0,0 +1,26 @@
++use lutaml_rs::{
++    contracts::{InputFormat, TypeBindings, XmlCodecEmitter},
++    generator::RustEmitter,
++    lml,
++    xml::RustXmlEmitter,
++};
++use std::{error::Error, path::PathBuf};
++
++fn main() -> Result<(), Box<dyn Error>> {
++    let args: Vec<_> = std::env::args_os().skip(1).collect();
++    let [input, output] = args.as_slice() else {
++        return Err("usage: mml-xml-codegen BUNDLE OUTPUT".into());
++    };
++    let snapshot = lml::load(&std::fs::read(input)?, InputFormat::Json)?;
++    let bundle = snapshot.bundle()?;
++    let bindings = TypeBindings::new();
++    let files = RustEmitter.generate_xml_models(&bundle, &bindings)?;
++    let codecs = RustXmlEmitter.generate_xml_codecs(&bundle, &bindings)?;
++    let output = PathBuf::from(output);
++    std::fs::create_dir_all(&output)?;
++    for (name, source) in files.into_iter().chain(codecs) {
++        std::fs::write(output.join(name), source)?;
++    }
++    println!("{}", snapshot.checksum());
++    Ok(())
++}
+--- /dev/null
++++ b/src/xml/token_bridge.rs.txt
+@@ -0,0 +1,28 @@
++
++fn model_tokens(tokens: &[super::contracts::ContentToken]) -> Vec<super::models::ContentToken> {
++    use super::contracts::{ContentToken as Input, TextSource as InputText};
++    use super::models::{ContentToken as Output, TextSource as OutputText};
++    let text = |source: &InputText| match source {
++        InputText::Member { attribute, index } => OutputText::Member { attribute: attribute.clone(), index: *index },
++        InputText::Literal { literal } => OutputText::Literal { literal: literal.clone() },
++    };
++    tokens.iter().map(|token| match token {
++        Input::Element { attribute, index } => Output::Element { attribute: attribute.clone(), index: *index },
++        Input::Text { source } => Output::Text { source: text(source) },
++        Input::Cdata { source } => Output::Cdata { source: text(source) },
++    }).collect()
++}
++
++fn contract_tokens(tokens: &[super::models::ContentToken]) -> Vec<super::contracts::ContentToken> {
++    use super::models::{ContentToken as Input, TextSource as InputText};
++    use super::contracts::{ContentToken as Output, TextSource as OutputText};
++    let text = |source: &InputText| match source {
++        InputText::Member { attribute, index } => OutputText::Member { attribute: attribute.clone(), index: *index },
++        InputText::Literal { literal } => OutputText::Literal { literal: literal.clone() },
++    };
++    tokens.iter().map(|token| match token {
++        Input::Element { attribute, index } => Output::Element { attribute: attribute.clone(), index: *index },
++        Input::Text { source } => Output::Text { source: text(source) },
++        Input::Cdata { source } => Output::Cdata { source: text(source) },
++    }).collect()
++}

@@ -1,0 +1,19 @@
+[package]
+name = "mml-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Generated MathML v3 and v4 models and native XML codecs"
+license = "BSD-2-Clause"
+readme = "README.md"
+include = ["src/lib.rs", "src/v3.rs", "src/v4.rs", "src/generated_xml/*/models.rs", "src/generated_xml/*/xml_codecs.rs", "model/**", "tests/**", "README.md", "Cargo.toml"]
+
+[features]
+default = ["v3"]
+v3 = []
+v4 = []
+model-serde = []
+
+[dependencies]
+lutaml-rs = { version = "=0.1.0", default-features = false, features = ["xml"] }
+serde = { version = "=1.0.219", features = ["derive"] }
+serde_json = { version = "=1.0.140", features = ["arbitrary_precision", "preserve_order"] }
