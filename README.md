@@ -30,3 +30,6 @@ profile is mml-typed-model-snapshot-v1, with absent fields omitted and present
 empty values retained. Native parser and writer field helpers use bounded
 recursive frames. Default Rust-thread depth16/64 acceptance and parser-limit
 refusals at128/256 are recorded with the native source provenance.
+
+The Cargo archive contains the Rust model/XML library. The complete Git source
+archive also includes the native subcrate for paired Python/FFI builds.
