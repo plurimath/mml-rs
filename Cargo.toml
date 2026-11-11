@@ -1,6 +1,7 @@
 [package]
 name = "mml-rs"
 version = "0.1.0"
+repository = "https://github.com/plurimath/mml-rs"
 edition = "2021"
 description = "Generated MathML v3 and v4 models and native XML codecs"
 license = "BSD-2-Clause"
