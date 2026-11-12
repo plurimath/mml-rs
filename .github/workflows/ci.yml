@@ -51,6 +51,10 @@ jobs:
       - name: cargo test --locked --all-targets
         run: cargo +${{ matrix.rust }} test --locked --all-targets
       - name: cargo test --locked --all-features --all-targets
+        # The generated v3 and v4 models are very large; compiling the library and its
+        # test build in parallel exhausted runner memory on the oldest toolchain.
+        env:
+          CARGO_BUILD_JOBS: 1
         run: cargo +${{ matrix.rust }} test --locked --all-features --all-targets
       - name: cargo test --locked --manifest-path native/Cargo.toml --all-targets
         run: cargo +${{ matrix.rust }} test --locked --manifest-path native/Cargo.toml --all-targets
