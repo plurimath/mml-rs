@@ -1,4 +1,7 @@
 //! One owned native model per handle, with mapped JSON and XML projections.
+// Collecting the generated MathML trees nests iterator adapters deeply enough to pass the
+// default limit of 128 on Rust 1.87.
+#![recursion_limit = "256"]
 use serde_json::{json, Value};
 use std::{ffi::{c_char, CString}, panic::{catch_unwind, AssertUnwindSafe}};
 
