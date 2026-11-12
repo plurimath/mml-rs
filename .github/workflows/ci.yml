@@ -34,8 +34,10 @@ jobs:
             rust: stable
           - os: windows-latest
             rust: stable
+          # Oldest supported toolchain: the pinned moxml-rs revision (via lutaml-rs)
+          # uses u64::is_multiple_of, stable since Rust 1.87.
           - os: ubuntu-latest
-            rust: 1.86.0
+            rust: 1.87.0
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
