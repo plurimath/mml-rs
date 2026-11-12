@@ -43,11 +43,6 @@ jobs:
           persist-credentials: false
       - name: Install Rust toolchain
         run: rustup toolchain install ${{ matrix.rust }} --profile minimal --component rustfmt
-      # PUBLICATION PREREQUISITE (not yet public): lutaml-rs is resolved from crates.io
-      # name `lutaml-rs =0.1.0`, which does not exist on crates.io. The qualified build
-      # patched it to the unpublished framework base 4863160 + xml-models-optional-serde.patch.
-      # Root must publish that exact framework state (lutaml/lutaml-rs) and add the
-      # [patch]/git pin before this workflow can pass.
       - name: Check formatting
         if: matrix.os == 'ubuntu-latest' && matrix.rust == 'stable'
         run: cargo +${{ matrix.rust }} fmt --all -- --check
@@ -55,5 +50,5 @@ jobs:
         run: cargo +${{ matrix.rust }} test --locked --all-targets
       - name: cargo test --locked --all-features --all-targets
         run: cargo +${{ matrix.rust }} test --locked --all-features --all-targets
-      - name: cargo test --manifest-path native/Cargo.toml --all-targets
-        run: cargo +${{ matrix.rust }} test --manifest-path native/Cargo.toml --all-targets
+      - name: cargo test --locked --manifest-path native/Cargo.toml --all-targets
+        run: cargo +${{ matrix.rust }} test --locked --manifest-path native/Cargo.toml --all-targets

@@ -60,6 +60,7 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 [[package]]
 name = "lutaml-rs"
 version = "0.1.0"
+source = "git+https://github.com/suleman-uzair/lutaml-rs?rev=3855de1ab72a7a750c3b72c010b11b22c7ec29a0#3855de1ab72a7a750c3b72c010b11b22c7ec29a0"
 dependencies = [
  "moxml",
  "num-bigint",
