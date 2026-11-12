@@ -1,0 +1,21 @@
+[package]
+name = "mml-native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default = ["v3"]
+v3 = ["mml-rs/v3"]
+v4 = ["mml-rs/v4"]
+
+[dependencies]
+serde = { version = "=1.0.219" }
+mml-rs = { path = "..", default-features = false }
+lutaml-rs = { version = "=0.1.0", git = "https://github.com/suleman-uzair/lutaml-rs", rev = "3855de1ab72a7a750c3b72c010b11b22c7ec29a0", default-features = false, features = ["xml"] }
+serde_json = { version = "=1.0.140", features = ["arbitrary_precision", "preserve_order"] }
+
+[workspace]
