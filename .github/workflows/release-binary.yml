@@ -33,23 +33,32 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.target }}
+    name: ${{ matrix.target }} / ${{ matrix.version }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    timeout-minutes: 60
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
+        # The native crate builds one MathML version per library
+        # (v3 and v4 together are a compile error), so each version is its
+        # own job and its own asset.
+        version: [v3, v4]
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - aarch64-apple-darwin
+          - x86_64-pc-windows-msvc
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -58,11 +67,11 @@ jobs:
       - name: Install Rust toolchain
         run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }}
       - name: Build the native library
-        run: cargo +stable build --locked --release --target ${{ matrix.target }} --manifest-path native/Cargo.toml --lib --all-features
+        run: cargo +stable build --locked --release --target ${{ matrix.target }} --manifest-path native/Cargo.toml --lib --no-default-features --features ${{ matrix.version }}
       - name: Package
         shell: bash
         run: |
-          name="${GITHUB_REPOSITORY#*/}-${{ matrix.target }}"
+          name="${GITHUB_REPOSITORY#*/}-${{ matrix.version }}-${{ matrix.target }}"
           out="dist/$name"
           mkdir -p "$out"
           find target/${{ matrix.target }}/release -maxdepth 1 -type f \
@@ -80,7 +89,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: native-${{ matrix.target }}
+          name: native-${{ matrix.version }}-${{ matrix.target }}
           path: ${{ env.ASSET }}
           if-no-files-found: error
       - name: Upload to the GitHub release
