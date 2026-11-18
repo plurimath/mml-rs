@@ -13,10 +13,35 @@
 //!
 //! The ledger is append-only: a row whose id has an `-r2` sibling is
 //! superseded by it and only the sibling runs, as in the Ruby gem's replay.
+//!
+//! `KNOWN_REFUSALS` lists rows whose input is not well-formed XML. Ruby's
+//! parser recovers from them; this crate's parser is strict (W3C) by design,
+//! so those rows must be refused here, and a listed row that is accepted
+//! fails the replay so the list cannot go stale.
 use lutaml_rs::xml::moxml_binding::moxml::document::{ContentRow, Document, ElementRow};
 use mml_rs::v3::{from_xml, to_xml};
 use serde_json::{json, Value};
 use std::collections::HashSet;
+
+/// Rows refused on purpose: the input is malformed XML.
+const KNOWN_REFUSALS: &[(&str, &str)] = &[
+    (
+        "mathml-unclosed-math.model-roundtrip",
+        "unclosed <math> element",
+    ),
+    (
+        "mathml-unclosed-token.model-roundtrip",
+        "unclosed <mi> element",
+    ),
+    (
+        "mathml-unclosed-operator.model-roundtrip",
+        "unclosed <mo> element",
+    ),
+    (
+        "mathml-mismatched-close.model-roundtrip",
+        "</mn> closes <mi>",
+    ),
+];
 
 fn tree(rows: &[ElementRow], ordinal: usize) -> Value {
     let element = &rows[ordinal];
@@ -86,6 +111,12 @@ fn failure(row: &Value) -> Option<(&'static str, String)> {
         row["id"]
     );
     let result = roundtrip(input);
+    let known_refusal = KNOWN_REFUSALS
+        .iter()
+        .any(|(id, _)| row["id"].as_str() == Some(id));
+    if known_refusal {
+        return result.ok().map(|xml| ("known-refusal-accepted", xml));
+    }
     if row["expected"].get("refusal").is_some() {
         return result.ok().map(|xml| ("accepted", xml));
     }
@@ -148,6 +179,12 @@ fn pinned_generation_replay() {
         );
     }
     assert_eq!(outcomes.len() + superseded.len(), rows.len());
+    for (id, _) in KNOWN_REFUSALS {
+        assert!(
+            ids.contains(id),
+            "{id}: listed known refusal is not in the corpus"
+        );
+    }
     let mut kinds = std::collections::BTreeMap::<String, usize>::new();
     for outcome in &outcomes {
         if let Some(kind) = outcome["kind"].as_str() {
@@ -161,6 +198,7 @@ fn pinned_generation_replay() {
         "executed": outcomes.len(),
         "superseded": superseded.len(),
         "failed": failures,
+        "known_refusals": KNOWN_REFUSALS.iter().map(|(id, why)| json!({"id": id, "reason": why})).collect::<Vec<_>>(),
         "kinds": kinds,
         "outcomes": outcomes,
     });
