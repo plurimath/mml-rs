@@ -18,11 +18,10 @@ The current source candidate is verified with the exact local
 `lutaml-rs` runtime recorded in `model/codegen.json`, supplied through a
 Cargo patch. Remote dependency resolution awaits that runtime revision.
 
-To regenerate the native sources, apply the patch in
-`model/xml-models-optional-serde.patch` to the framework revision pinned in
-`model/codegen.json`. Build its `mml-xml-codegen` binary with the `xml`
-feature. Pass each `model/mathml-vN.bundle.json` and the corresponding
-`src/generated_xml/vN` directory to that binary. The provenance file
+To regenerate the native sources, build the `mml-xml-codegen` binary of the
+`lutaml-rs` revision pinned in `Cargo.toml` (recorded in `model/codegen.json`)
+with the `generator` and `xml` features. Pass each `model/mathml-vN.bundle.json`
+and the corresponding `src/generated_xml/vN` directory to that binary. The provenance file
 records the generated hashes for both versions.
 
 The native subcrate provides opaque owned-model handles for Python. Its snapshot

@@ -34,6 +34,45 @@ const TEXT_CONTENT: &[&str] = &[
     "mtext",
 ];
 
+/// Mixed content: at least one child element and some non-whitespace text.
+fn is_mixed(row: &ElementRow) -> bool {
+    let mut element = false;
+    let mut text = false;
+    for node in &row.content {
+        match node {
+            ContentRow::Element(_) => element = true,
+            ContentRow::Text(t) if !t.trim().is_empty() => text = true,
+            _ => {}
+        }
+    }
+    element && text
+}
+
+/// Ruby writes a bare newline after a mixed-content child of a mixed-content
+/// element (`</mrow>\n</mrow>`, `</mrow>\n<mo>`). A whitespace-only text
+/// right after such a child becomes that newline; with no text there, one is
+/// added. Text with content is left as it is.
+fn mixed_child_newlines(rows: &[ElementRow], row: &ElementRow, content: &mut Vec<ContentSpec>) {
+    let mut at = 0;
+    for node in &row.content {
+        at += 1;
+        let ContentRow::Element(child) = node else {
+            continue;
+        };
+        if !is_mixed(&rows[*child]) {
+            continue;
+        }
+        match content.get_mut(at) {
+            Some(ContentSpec::Text(t)) if t.trim().is_empty() => *t = "\n".to_owned(),
+            Some(ContentSpec::Text(_)) | Some(ContentSpec::CData(_)) => {}
+            _ => {
+                content.insert(at, ContentSpec::Text("\n".to_owned()));
+                at += 1;
+            }
+        }
+    }
+}
+
 fn rebuild(
     rows: &[ElementRow],
     ordinal: usize,
@@ -59,6 +98,9 @@ fn rebuild(
             }
         })
         .collect();
+    if is_mixed(row) {
+        mixed_child_newlines(rows, row, &mut content);
+    }
     let element = name(&row.name);
     if pair_empty
         && content.is_empty()
