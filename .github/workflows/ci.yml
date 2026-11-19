@@ -17,9 +17,6 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_TARGET_DIR: target
   RUST_BACKTRACE: 1
-  # Code generated at lutaml-rs#9/#10 inlines the recursive field frames, so a
-  # debug test thread overflows the default 2 MiB stack on over-under-019.
-  RUST_MIN_STACK: 268435456
 
 jobs:
   test:
