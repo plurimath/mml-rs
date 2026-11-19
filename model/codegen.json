@@ -1,32 +1,32 @@
 {
-  "runtime_revision": "828275bd28facc7af8caf5c0fa402ec6962369df",
-  "codegen_binary_sha256": "77cb72712e91dc8dfa4478b118ec7362acf4610c6a321cfe17ddc4549e225b29",
+  "runtime_revision": "02340c77d8034826f285927520eda83cb89d4955",
+  "codegen_binary_sha256": "b4906503b366ced9ca2c66d77e1eb1a38e954cabab6aeac0bbd9324781b8424e",
   "versions": {
     "3": {
       "input_sha256": "ee79ea4bcc910f91f1b118ae0accc5baeb058501c76f4d233e5c4724ef74aab4",
       "generated": {
-        "models.rs": "107fb355a838302b11b629f6e5c005f973c1b591ac62b08aa8f785551b5dac2c",
+        "models.rs": "64bbf74e1575c3be9c81fe1689686b25b0ffc1553ac68cf66c707b8160bb031e",
         "xml_codecs.rs": "c52b90dcf25ee0faa0b42574835453dc871007d213409f23aaa0c3aed8b53a5c"
       },
       "baseline_generated": {
-        "models.rs": "107fb355a838302b11b629f6e5c005f973c1b591ac62b08aa8f785551b5dac2c",
+        "models.rs": "64bbf74e1575c3be9c81fe1689686b25b0ffc1553ac68cf66c707b8160bb031e",
         "xml_codecs.rs": "c52b90dcf25ee0faa0b42574835453dc871007d213409f23aaa0c3aed8b53a5c"
       }
     },
     "4": {
       "input_sha256": "7b1041645156d9df7b94a8c9c3acce6256b12d1df5f6cc611d39465e0556e26a",
       "generated": {
-        "models.rs": "44701ac534b1515f96c0447833f68f65e14c00fbea0725e401bb12254e00c34e",
+        "models.rs": "71ed8d2d9728e66547d7e181b1730dc517adef54fa39b7647de1156f31cd1d1e",
         "xml_codecs.rs": "6b7b3aee4d3394551997985eced7c97092b5fff7838da22ad4021e4449f82341"
       },
       "baseline_generated": {
-        "models.rs": "44701ac534b1515f96c0447833f68f65e14c00fbea0725e401bb12254e00c34e",
+        "models.rs": "71ed8d2d9728e66547d7e181b1730dc517adef54fa39b7647de1156f31cd1d1e",
         "xml_codecs.rs": "6b7b3aee4d3394551997985eced7c97092b5fff7838da22ad4021e4449f82341"
       }
     }
   },
   "xml_model_mode": {
-    "framework_base": "828275bd28facc7af8caf5c0fa402ec6962369df",
+    "framework_base": "02340c77d8034826f285927520eda83cb89d4955",
     "generator_patch_sha256": null,
     "model_serde_feature": "model-serde",
     "generated": [
@@ -34,7 +34,7 @@
         "version": 3,
         "model_count": 194,
         "files": {
-          "models.rs": "107fb355a838302b11b629f6e5c005f973c1b591ac62b08aa8f785551b5dac2c",
+          "models.rs": "64bbf74e1575c3be9c81fe1689686b25b0ffc1553ac68cf66c707b8160bb031e",
           "xml_codecs.rs": "c52b90dcf25ee0faa0b42574835453dc871007d213409f23aaa0c3aed8b53a5c"
         }
       },
@@ -42,13 +42,13 @@
         "version": 4,
         "model_count": 195,
         "files": {
-          "models.rs": "44701ac534b1515f96c0447833f68f65e14c00fbea0725e401bb12254e00c34e",
+          "models.rs": "71ed8d2d9728e66547d7e181b1730dc517adef54fa39b7647de1156f31cd1d1e",
           "xml_codecs.rs": "6b7b3aee4d3394551997985eced7c97092b5fff7838da22ad4021e4449f82341"
         }
       }
     ],
     "ordinary_json_compiler": "unchanged baseline 4863160 (native crate)",
-    "generator_source": "https://github.com/suleman-uzair/lutaml-rs 828275bd28facc7af8caf5c0fa402ec6962369df (lutaml/lutaml-rs#10 head, with lutaml-rs#9 merged; temporary until it lands). The optional-serde patch is part of that generator, so no patch is applied."
+    "generator_source": "https://github.com/suleman-uzair/lutaml-rs 02340c77d8034826f285927520eda83cb89d4955 (lutaml/lutaml-rs#10 head, with lutaml-rs#9 merged; temporary until it lands). The optional-serde patch is part of that generator, so no patch is applied."
   },
   "baseline_codegen_binary_sha256": "4813a91e10f04423fb6906bba61ea75d739a2fa90798b18a0a5b889ad9cd7d3d"
 }

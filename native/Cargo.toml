@@ -16,7 +16,7 @@ v4 = ["mml-rs/v4"]
 serde = { version = "=1.0.219" }
 mml-rs = { path = "..", default-features = false }
 # TEMPORARY fork pin (lutaml/lutaml-rs#10 head): pin to lutaml merge commit once lutaml-rs#10 / lutaml-ts#3 land.
-lutaml-rs = { version = "=0.1.0", git = "https://github.com/suleman-uzair/lutaml-rs", rev = "828275bd28facc7af8caf5c0fa402ec6962369df", default-features = false, features = ["xml"] }
+lutaml-rs = { version = "=0.1.0", git = "https://github.com/suleman-uzair/lutaml-rs", rev = "02340c77d8034826f285927520eda83cb89d4955", default-features = false, features = ["xml"] }
 serde_json = { version = "=1.0.140", features = ["arbitrary_precision", "preserve_order"] }
 
 [workspace]
