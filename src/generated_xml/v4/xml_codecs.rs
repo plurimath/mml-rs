@@ -18,6 +18,9 @@ fn model_tokens(tokens: &[super::contracts::ContentToken]) -> Vec<super::models:
         Input::Element { attribute, index } => Output::Element { attribute: attribute.clone(), index: *index },
         Input::Text { source } => Output::Text { source: text(source) },
         Input::Cdata { source } => Output::Cdata { source: text(source) },
+        Input::Comment { literal } => Output::Comment { literal: literal.clone() },
+        Input::ProcessingInstruction { target, data } => Output::ProcessingInstruction { target: target.clone(), data: data.clone() },
+        Input::Attribute { attribute, index } => Output::Attribute { attribute: attribute.clone(), index: *index },
     }).collect()
 }
 
@@ -32,6 +35,9 @@ fn contract_tokens(tokens: &[super::models::ContentToken]) -> Vec<super::contrac
         Input::Element { attribute, index } => Output::Element { attribute: attribute.clone(), index: *index },
         Input::Text { source } => Output::Text { source: text(source) },
         Input::Cdata { source } => Output::Cdata { source: text(source) },
+        Input::Comment { literal } => Output::Comment { literal: literal.clone() },
+        Input::ProcessingInstruction { target, data } => Output::ProcessingInstruction { target: target.clone(), data: data.clone() },
+        Input::Attribute { attribute, index } => Output::Attribute { attribute: attribute.clone(), index: *index },
     }).collect()
 }
 #[inline(never)]
