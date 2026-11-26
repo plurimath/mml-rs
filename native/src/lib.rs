@@ -13,11 +13,12 @@ use snapshots::Snapshot;
 
 #[cfg(feature = "v3")]
 use mml_rs::v3::models;
+// Math goes through the crate's Ruby-compatible reader and writer (an unnamespaced
+// `<math>` is read as MathML; output has Ruby `Mml` `to_xml` layout), as Rust callers get.
 #[cfg(feature = "v3")]
-use mml_rs::v3::xml_codecs::{
-    read_Mml_V3_Math_xml as read_math, write_Mml_V3_Math_xml as write_math,
-    read_Mml_V3_Mi_xml as read_mi, write_Mml_V3_Mi_xml as write_mi,
-};
+use mml_rs::v3::{from_xml as read_math, to_xml as write_math};
+#[cfg(feature = "v3")]
+use mml_rs::v3::xml_codecs::{read_Mml_V3_Mi_xml as read_mi, write_Mml_V3_Mi_xml as write_mi};
 #[cfg(feature = "v3")]
 use models::{Mml_V3_Math as Math, Mml_V3_Mi as Mi};
 #[cfg(feature = "v3")]
@@ -26,11 +27,12 @@ mod snapshots;
 
 #[cfg(feature = "v4")]
 use mml_rs::v4::models;
+// Math goes through the crate's Ruby-compatible reader and writer (an unnamespaced
+// `<math>` is read as MathML; output has Ruby `Mml` `to_xml` layout), as Rust callers get.
 #[cfg(feature = "v4")]
-use mml_rs::v4::xml_codecs::{
-    read_Mml_V4_Math_xml as read_math, write_Mml_V4_Math_xml as write_math,
-    read_Mml_V4_Mi_xml as read_mi, write_Mml_V4_Mi_xml as write_mi,
-};
+use mml_rs::v4::{from_xml as read_math, to_xml as write_math};
+#[cfg(feature = "v4")]
+use mml_rs::v4::xml_codecs::{read_Mml_V4_Mi_xml as read_mi, write_Mml_V4_Mi_xml as write_mi};
 #[cfg(feature = "v4")]
 use models::{Mml_V4_Math as Math, Mml_V4_Mi as Mi};
 #[cfg(feature = "v4")]
