@@ -88,3 +88,24 @@ jobs:
           name: corpus-report-${{ matrix.os }}-${{ matrix.rust }}
           path: target/corpus-report.json
           if-no-files-found: ignore
+
+  regenerate:
+    name: regenerate generated_xml (temporary)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Build mml-xml-codegen at the pinned lutaml-rs
+        run: |
+          rev=1f826b7dd0ba1545479df8a4ba715d67e2985b32
+          git init -q "$RUNNER_TEMP/lr"
+          git -C "$RUNNER_TEMP/lr" fetch -q --depth 1 https://github.com/lutaml/lutaml-rs "$rev"
+          git -C "$RUNNER_TEMP/lr" checkout -q FETCH_HEAD
+          CARGO_TARGET_DIR="$RUNNER_TEMP/lrt" cargo run --quiet --locked --release --manifest-path "$RUNNER_TEMP/lr/Cargo.toml" --features generator,xml --bin mml-xml-codegen -- model/mathml-v3.bundle.json out/v3
+          CARGO_TARGET_DIR="$RUNNER_TEMP/lrt" cargo run --quiet --locked --release --manifest-path "$RUNNER_TEMP/lr/Cargo.toml" --features generator,xml --bin mml-xml-codegen -- model/mathml-v4.bundle.json out/v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: regenerated-generated-xml
+          path: out
