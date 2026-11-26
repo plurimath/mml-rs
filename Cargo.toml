@@ -15,6 +15,6 @@ v4 = []
 model-serde = []
 
 [dependencies]
-lutaml-rs = { version = "=0.1.0", git = "https://github.com/lutaml/lutaml-rs", rev = "02340c77d8034826f285927520eda83cb89d4955", default-features = false, features = ["xml"] }
+lutaml-rs = { version = "=0.1.0", git = "https://github.com/lutaml/lutaml-rs", rev = "1f826b7dd0ba1545479df8a4ba715d67e2985b32", default-features = false, features = ["xml"] }
 serde = { version = "=1.0.219", features = ["derive"] }
 serde_json = { version = "=1.0.140", features = ["arbitrary_precision", "preserve_order"] }
