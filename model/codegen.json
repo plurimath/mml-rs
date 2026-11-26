@@ -1,5 +1,5 @@
 {
-  "runtime_revision": "02340c77d8034826f285927520eda83cb89d4955",
+  "runtime_revision": "1f826b7dd0ba1545479df8a4ba715d67e2985b32",
   "codegen_binary_sha256": "b4906503b366ced9ca2c66d77e1eb1a38e954cabab6aeac0bbd9324781b8424e",
   "versions": {
     "3": {
@@ -26,7 +26,7 @@
     }
   },
   "xml_model_mode": {
-    "framework_base": "02340c77d8034826f285927520eda83cb89d4955",
+    "framework_base": "1f826b7dd0ba1545479df8a4ba715d67e2985b32",
     "generator_patch_sha256": null,
     "model_serde_feature": "model-serde",
     "generated": [
@@ -48,7 +48,7 @@
       }
     ],
     "ordinary_json_compiler": "unchanged baseline 4863160 (native crate)",
-    "generator_source": "https://github.com/suleman-uzair/lutaml-rs 02340c77d8034826f285927520eda83cb89d4955 (lutaml/lutaml-rs#10 head, with lutaml-rs#9 merged; temporary until it lands). The optional-serde patch is part of that generator, so no patch is applied."
+    "generator_source": "https://github.com/lutaml/lutaml-rs 1f826b7dd0ba1545479df8a4ba715d67e2985b32 (lutaml/lutaml-rs#10 head, with lutaml-rs#9 merged; temporary until it lands). The optional-serde patch is part of that generator, so no patch is applied."
   },
   "baseline_codegen_binary_sha256": "4813a91e10f04423fb6906bba61ea75d739a2fa90798b18a0a5b889ad9cd7d3d"
 }
