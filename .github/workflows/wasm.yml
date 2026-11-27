@@ -1,7 +1,8 @@
 name: WASM
 
 # Compile check for the wasm32-unknown-unknown target, the TS-WASM leg
-# of the stack. Build only; nothing is published from this workflow.
+# of the stack, plus the pinned corpus replay on wasm32-wasip1 under
+# wasmtime. Nothing is published from this workflow.
 on:
   push:
     branches: [main]
@@ -35,3 +36,61 @@ jobs:
         run: cargo +stable build --locked --release --target wasm32-unknown-unknown --lib
       - name: Build the library for wasm32 (--lib --all-features)
         run: cargo +stable build --locked --release --target wasm32-unknown-unknown --lib --all-features
+
+  # Pinned plurimath-testsuite mathml generation 3 replayed on wasm32-wasip1
+  # under wasmtime: the same corpus_replay test and pinned generation that
+  # ci.yml runs natively, so the wasm leg is checked against the corpus too.
+  corpus-replay-wasip1:
+    name: wasm32-wasip1 corpus replay (mathml gen 3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WASMTIME_VERSION: v51.0.0
+      WASMTIME_SHA256: a18020674fac4107f329bc9ed720ea9c88e4b30a61e8a527787bcce051123d32
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain
+        run: rustup toolchain install stable --profile minimal --target wasm32-wasip1
+      - name: Install wasmtime
+        run: |
+          archive="wasmtime-${{ env.WASMTIME_VERSION }}-x86_64-linux"
+          curl -fsSL -o "$RUNNER_TEMP/$archive.tar.xz" \
+            "https://github.com/bytecodealliance/wasmtime/releases/download/${{ env.WASMTIME_VERSION }}/$archive.tar.xz"
+          echo "${{ env.WASMTIME_SHA256 }}  $RUNNER_TEMP/$archive.tar.xz" | sha256sum -c -
+          tar -xJf "$RUNNER_TEMP/$archive.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$archive" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/$archive/wasmtime" --version
+      - name: Check out the pinned mathml generation 3 corpus
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          repository: plurimath/plurimath-testsuite
+          ref: 674126a07fa1cf89c24bc50fadb305299e1d1b18
+          path: .corpus
+          persist-credentials: false
+      - name: Install Python for the corpus extractor
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Verify and extract the pinned generation
+        run: |
+          python -m pip install PyYAML==6.0.2
+          python .github/scripts/extract-corpus.py .corpus tests/fixtures/corpus-pin.json target/corpus.json
+      # The guest sees only the workspace (mapped at the same path, so the
+      # absolute paths below and CARGO_MANIFEST_DIR resolve) and the two
+      # named env vars, which wasmtime inherits from the host.
+      - name: Replay pinned generation 3 on wasm32-wasip1 (model-roundtrip rows)
+        env:
+          MML_CORPUS_CASES: ${{ github.workspace }}/target/corpus.json
+          MML_CORPUS_REPORT: ${{ github.workspace }}/target/corpus-report-wasip1.json
+          CARGO_TARGET_WASM32_WASIP1_RUNNER: wasmtime run --dir ${{ github.workspace }} --env MML_CORPUS_CASES --env MML_CORPUS_REPORT
+        run: cargo +stable test --locked --target wasm32-wasip1 --test corpus_replay -- --ignored --nocapture
+      - name: Upload the replay report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: corpus-report-wasm32-wasip1
+          path: target/corpus-report-wasip1.json
+          if-no-files-found: ignore
