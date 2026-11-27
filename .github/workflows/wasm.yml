@@ -77,6 +77,7 @@ jobs:
       - name: Verify and extract the pinned generation
         run: |
           python -m pip install PyYAML==6.0.2
+          mkdir -p target
           python .github/scripts/extract-corpus.py .corpus tests/fixtures/corpus-pin.json target/corpus.json
       # The guest sees only the workspace (mapped at the same path, so the
       # absolute paths below and CARGO_MANIFEST_DIR resolve) and the two
